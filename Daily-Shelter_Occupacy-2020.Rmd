@@ -1,0 +1,281 @@
+---
+title: "Daily Shelter Occupancy 2020 (Toronto Open Data)"
+author: "Svitlana Protas"
+date: "Compiled on `r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+params:
+  filename: daily-shelter-occupancy-2020.csv
+---
+
+```{r}
+source.data <- read.csv(params$filename, stringsAsFactors = FALSE)
+head(source.data)
+summary(source.data)
+```
+##Print the structure of your dataset.
+```{r}
+source.data <- read.csv(params$filename, stringsAsFactors = FALSE)
+colnames(source.data)
+print(nrow(source.data))
+print(ncol(source.data))
+```
+##List the variables in your dataset
+```{r}
+source.data <- read.csv(params$filename, stringsAsFactors = FALSE)
+str(source.data)
+```   
+##Print the top 15 rows of your dataset.
+```{r}
+library(tidyverse)
+print(source.data[c(1:15), ])
+print(source.data[c(1:15), c("SHELTER_PROVINCE", "SECTOR", "OCCUPANCY", "CAPACITY")])
+sample_n(source.data, 15)
+```
+
+##Write a user defined function using any of the variables from the data set.
+```{r}
+occupationalStatus <- function(sctr, rCount=NULL){
+  if(!is.null(rCount)){
+    # to test on subset
+    dt<-source.data[c(1:rCount), c("SHELTER_PROVINCE", "SECTOR", "OCCUPANCY", "CAPACITY")]
+  } else {
+    dt<-source.data[c("SHELTER_PROVINCE", "SECTOR", "OCCUPANCY", "CAPACITY")]
+  } 
+  subset(dt, tolower(SECTOR)==tolower(sctr))
+}
+print(occupationalStatus("women", 50))
+
+#print(occupationalStatus("women"))
+#print(occupationalStatus("men"))
+#print(occupationalStatus("youth"))
+#print(occupationalStatus("co-ed"))
+#print(occupationalStatus("families"))
+
+occupationalStatus("women")
+occupationalStatus("men")
+occupationalStatus("youth")
+occupationalStatus("co-ed")
+occupationalStatus("families")
+```
+
+#Use data manipulation techniques and filter rows based on any logical criteria that exist in your dataset.
+```{r}
+library(tidyverse)
+
+shelterData<-tibble(source.data)
+#View(shelterData)
+fData<-filter(shelterData, OCCUPANCY > 500 & tolower(SECTOR)=="families")
+select(fData, OCCUPANCY_DATE, SHELTER_NAME:SHELTER_CITY, PROGRAM_NAME:CAPACITY)
+```
+
+#Remove missing values in your dataset.
+```{r}
+print(any(is.na(source.data)))
+print(nrow(source.data))
+
+cleannedData <- source.data[complete.cases(source.data),]
+nrow(cleannedData)
+cleannedData
+```
+
+#Identify the dependent & independent variables and use reshaping techniques and create a 
+#new data frame by joining those variables from your dataset.
+```{r}
+united_Data<-source.data %>% unite(SHELTER_FULL_ADDRESS, SHELTER_ADDRESS, SHELTER_CITY, SHELTER_PROVINCE, SHELTER_POSTAL_CODE, sep = ', ')
+head(united_Data, 20)
+```
+
+#Identify and remove duplicated data in your dataset.
+```{r}
+
+#to test
+#uniqueData<-source.data$SHELTER_NAME %>% unique()
+#uniqueData
+
+#distinctData<-source.data %>% distinct(SHELTER_NAME, .keep_all = FALSE)
+#distinctData
+
+tibble(source.data)
+unique(source.data)
+distinct(source.data, .keep_all = FALSE)
+
+removed<-nrow(source.data) - nrow(unique(source.data))
+cat("Rows removed: ", removed)
+
+```
+
+#Reorder multiple rows in descending order
+```{r}
+arrengedData <-select(source.data, OCCUPANCY_DATE, SHELTER_NAME, OCCUPANCY, CAPACITY) %>% arrange(desc(OCCUPANCY)) %>% filter(OCCUPANCY > CAPACITY)
+arrengedData
+```
+
+#Rename some of the column names in your dataset.
+```{r}
+# rename SECTOR column name to SHELTER_SECTOR
+result<-source.data %>% filter(OCCUPANCY > CAPACITY) %>% rename(SHELTER_SECTOR = SECTOR) %>% 
+        select(OCCUPANCY_DATE, SHELTER_NAME, SHELTER_SECTOR, OCCUPANCY, CAPACITY) 
+result
+
+result<-source.data %>% subset(OCCUPANCY < 100) %>% select(OCCUPANCY_DATE, SHELTER_NAME, PROGRAM_NAME:CAPACITY)
+result
+```
+
+#Add new variables in your data frame by using a mathematical function (for e.g. – multiply 
+#an existing column by 2 and add it as a new variable to your data frame)
+```{r}
+source.data[["SpotsAvailabylity"]]<-(source.data$CAPACITY - source.data$OCCUPANCY)
+
+subset(source.data, source.data$SpotsAvailabylity < 0) #Go over Capacity
+
+#show occupacy percentage
+source.data<-mutate(source.data, occupayPercentage = source.data$OCCUPANCY*100/source.data$CAPACITY)
+sample_n(source.data, 50)
+```
+
+#Print the summary statistics of your dataset.
+```{r}
+tibble(source.data)
+summary(source.data)
+```
+
+##Create a training set using random number generator engine.
+```{r}
+
+#dataset is large, create sample 10% to test
+smp<-sample_frac(source.data, 0.01)
+smp
+
+#or using number generator engine
+dataSample<-bind_rows(
+  col1=runif(10, min=0, max=100), 
+  col2=runif(10, min=0, max=100), 
+  col3 = runif(10, min=0, max=100),
+  col4 = runif(10, min=0, max=100),
+  col5 = runif(10, min=0, max=100),
+  col6 = runif(10, min=0, max=100),
+  col7 = runif(10, min=0, max=100),
+  col8 = runif(10, min=0, max=100),
+  col9 = runif(10, min=0, max=100),
+  col10 = runif(10, min=0, max=100)
+  )
+
+df<-data.frame(dataSample)
+df
+```
+
+##Use any of the numerical variables from the dataset and perform the following statistical functions.
+```{r}
+
+tibble(source.data)
+summary(source.data)
+
+#Mean
+avgData<- source.data %>% select(OCCUPANCY_DATE, SECTOR, OCCUPANCY) %>% group_by(OCCUPANCY_DATE, SECTOR) %>% summarize(mean(OCCUPANCY))
+avgData
+
+#Median
+medianData<- source.data %>% select(OCCUPANCY_DATE, SECTOR, OCCUPANCY) %>% group_by(OCCUPANCY_DATE, SECTOR) %>% summarize(median(OCCUPANCY)) 
+medianData
+
+#Mode
+mode <- function(numbers){
+  which.max(tabulate(numbers))
+}
+
+modeData<- source.data %>% select(OCCUPANCY_DATE, SECTOR, OCCUPANCY) %>% group_by(OCCUPANCY_DATE, SECTOR) %>% summarize(mode(OCCUPANCY))
+modeData
+
+#Range
+rangeData<-source.data %>% select(OCCUPANCY_DATE, SECTOR, OCCUPANCY) %>% group_by(OCCUPANCY_DATE, SECTOR) %>% summarize(range(OCCUPANCY))
+rangeData
+
+```
+
+##Plot a scatter plot for any 2 variables in your dataset
+```{r}
+library(tidyverse)
+library(lubridate)
+source.data <- read.csv(params$filename, stringsAsFactors = FALSE)
+
+sdT<-as_tibble(source.data)
+
+grpByMonth <- sdT %>% select(OCCUPANCY_DATE, SECTOR, OCCUPANCY) %>% mutate(OCCUPANCY_DATE = months.Date(as.Date(OCCUPANCY_DATE))) %>%
+      group_by(OCCUPANCY_DATE, SECTOR) %>% summarise(OCCUPANCY, list(OCCUPANCY=sum))
+grpByMonth
+
+sc<-ggplot(grpByMonth, aes(OCCUPANCY_DATE, OCCUPANCY)) + geom_point(aes(color=SECTOR), sixe=3, na.rm=TRUE) + facet_grid(SECTOR ~.) + stat_smooth()+theme_minimal() +
+  labs(x="Month", y="Occupancy", title="2020 Shelter Occupancy by Month and Sector") +
+  theme(axis.text.x = element_text(angle=45)) +
+  scale_y_continuous(labels = scales::comma)
+sc
+
+```
+
+##Plot a bar plot for any 2 variables in your dataset 
+```{r}
+library(tidyverse)
+library(lubridate)
+source.data <- read.csv(params$filename, stringsAsFactors = FALSE)
+
+sdT<-tibble(source.data)
+sdT
+
+bar<-ggplot(sdT)
+bar<-ggplot(sdT, aes(x=SHELTER_CITY, y=OCCUPANCY), na.rm=TRUE)
+
+bar + geom_bar(stat='identity', aes(fill=SECTOR), size=1) + theme_light() + 
+  labs(y="Shelter Occupancy", x="City Area", title="2020 Shelter Occupancy by Sector") +
+  theme(axis.text.x = element_text(angle=45)) + 
+  scale_y_continuous(labels = scales::comma)
+
+
+```
+
+##Find the correlation between any 2 variables by applying least square linear regression model.
+```{r}
+library(knitr)
+library(rmarkdown)
+library(tidyverse)
+library(anytime)
+library(scales)
+source.data <- read.csv(params$filename, stringsAsFactors = FALSE)
+
+occupancy<-as_tibble(source.data)
+occupancy
+
+#dataset is large, create sample 20% to  test
+smp<-sample_frac(occupancy, 0.02)
+smp
+
+linmod = lm(OCCUPANCY~SECTOR, data=occupancy)
+
+summary(linmod)
+
+linmod = lm(OCCUPANCY~months.Date(as.Date(OCCUPANCY_DATE)), data=occupancy)
+
+ggplot(smp, aes(as.Date(OCCUPANCY_DATE), OCCUPANCY)) + 
+                  geom_point()+theme_light() +
+                  labs(x="DATE", y="OCCUPANCY", title="DATE and Occupancy") + 
+                  stat_smooth(method="lm", se=FALSE) +
+                  scale_x_date(labels=date_format("%B %Y"), breaks=date_breaks("3 months"))
+summary(linmod)
+
+```
+
+##Conclusion of your analysis if any in the .RMD file.
+```{r}
+cat("The analized data set includes figures showing users (homeless peole) who entered the shelter system from January 2020 over a 12-month period \n
+The impacts of job losses amid the economic slowdown caused by COVID-19 is the couse of increased number of people entering shelters \n
+The chosen dataset is very clean and provides good quality data \n
+     1. Analysisi shows that Etobicoke area has the lest shelter in Toronto and Old Toronto has the hiest number of shelters\n
+     2. Shelter by sectors or types: Families, Men, Women, and Co-ed \n
+     3. The data shows that shelters for Men have the highest capacity, then follow family shelters, then women’s shelters, and finally Co-ed. \n
+     4. The data shows thet in some periods shelters occupied over the Shelter Capacity \n\n
+     https://github.com/sprotas-hash/data-analysis.git \n \n
+     I was not able to created the PDf file using 'Knit to PDF', all the time it gives me error, but I was able to create HTML file using 'Knit to HTML' and I downloaded it to git")
+```
